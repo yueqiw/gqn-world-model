@@ -5,11 +5,12 @@ Script to train the a GQN on the Shepard-Metzler dataset
 in accordance to the hyperparamter settings described in
 the supplementary materials of the paper.
 """
-import sys
+import sys, os
 import random
 import math
 import argparse
 from tqdm import tqdm
+from datetime import datetime 
 
 import torch
 import torch.nn as nn
@@ -32,10 +33,13 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
     parser.add_argument('--fp16', type=bool, help='whether to use FP16 (default: False)', default=False)
     parser.add_argument('--data_parallel', type=bool, help='whether to parallelise based on data (default: False)', default=False)
+    parser.add_argument('--output_dir', type=str, help='location of model output', default="./output")
+    parser.add_argument('--save_every', type=int, help='save models every n updates', default=1000)
 
     args = parser.parse_args()
 
     dataset = ShepardMetzler(root_dir=args.data_dir, target_transform=transform_viewpoint)
+    print("\ntotal number of samples: {}\n".format(len(dataset)))
 
     # Pixel variance
     sigma_f, sigma_i = 0.7, 2.0
@@ -56,6 +60,15 @@ if __name__ == '__main__':
     # Load the dataset
     kwargs = {'num_workers': args.workers, 'pin_memory': True} if cuda else {}
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
+
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
+    model_name = 'gqn-' + datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir = os.path.join(args.output_dir, model_name)
+    os.mkdir(log_dir)
+    log_file = os.path.join(log_dir, 'log.txt')
+    with open(log_file, "w") as f:
+        f.write("step, nll, kl\n")
 
     # Number of gradient steps
     s = 0
@@ -92,26 +105,27 @@ if __name__ == '__main__':
             s += 1
 
             # Keep a checkpoint every 100,000 steps
-            if s % 100000 == 0:
-                torch.save(model, "model-{}.pt".format(s))
+            if s % args.save_every == 0:
+                torch.save(model, os.path.join(log_dir, "model-{}.pt".format(s)))
+                with torch.no_grad():
+                    print("|Steps: {}\t|NLL: {}\t|KL: {}\t|".format(s, reconstruction.item(), kl_divergence.item()))
+                    with open(log_file, 'a') as f:
+                        f.write("{}, {}, {}\n".format(s, reconstruction.item(), kl_divergence.item()))
 
-        with torch.no_grad():
-            print("|Steps: {}\t|NLL: {}\t|KL: {}\t|".format(s, reconstruction.item(), kl_divergence.item()))
+                    x, v = next(iter(loader))
+                    x, v = x.to(device), v.to(device)
 
-            x, v = next(iter(loader))
-            x, v = x.to(device), v.to(device)
+                    x_mu, _, r, _ = model(x, v)
 
-            x_mu, _, r, _ = model(x, v)
+                    r = r.view(-1, 1, 16, 16)
 
-            r = r.view(-1, 1, 16, 16)
+                    save_image(r.float(), os.path.join(log_dir, "representation-{}.jpg".format(s)))
+                    save_image(x_mu.float(), os.path.join(log_dir, "reconstruction-{}.jpg".format(s)))
 
-            save_image(r.float(), "representation.jpg")
-            save_image(x_mu.float(), "reconstruction.jpg")
+                    # Anneal learning rate
+                    mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
+                    for group in optimizer.param_groups:
+                        group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
 
-            # Anneal learning rate
-            mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
-            for group in optimizer.param_groups:
-                group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
-
-            # Anneal pixel variance
-            sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)
+                    # Anneal pixel variance
+                    sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)

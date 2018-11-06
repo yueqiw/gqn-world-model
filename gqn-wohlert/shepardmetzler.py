@@ -29,8 +29,7 @@ class ShepardMetzler(Dataset):
         self.filenames = []
         for folder in os.listdir(self.root_dir):
             files = [os.path.join(folder, x) for x in os.listdir(os.path.join(self.root_dir, folder)) if x.endswith(".pt.gz")]
-        self.filenames.extend(files)
-        #print(len(self.filenames))
+            self.filenames.extend(files)
         #self.filenames = [x for x in os.listdir(self.root_dir) if x.endswith(".pt.gz")]
         self.transform = transform
         self.target_transform = target_transform
