@@ -1,4 +1,4 @@
-import collections, os, io
+import collections, os, io, gzip 
 from PIL import Image
 import torch
 from torchvision.transforms import ToTensor
@@ -26,21 +26,36 @@ def transform_viewpoint(v):
 class ShepardMetzler(Dataset):
     def __init__(self, root_dir, transform=None, target_transform=None):
         self.root_dir = root_dir
+        self.filenames = []
+        for folder in os.listdir(self.root_dir):
+            files = [os.path.join(folder, x) for x in os.listdir(os.path.join(self.root_dir, folder)) if x.endswith(".pt.gz")]
+        self.filenames.extend(files)
+        #print(len(self.filenames))
+        #self.filenames = [x for x in os.listdir(self.root_dir) if x.endswith(".pt.gz")]
         self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
-        return len(os.listdir(self.root_dir))
+        return len(self.filenames)
+        # return len(os.listdir(self.root_dir))
 
     def __getitem__(self, idx):
-        scene_path = os.path.join(self.root_dir, "{}.pt".format(idx))
-        data = torch.load(scene_path)
+        # scene_path = os.path.join(self.root_dir, "{}.pt".format(idx))
+        # data = torch.load(scene_path)
+        #print(idx)
 
-        byte_to_tensor = lambda x: ToTensor()(Image.open(io.BytesIO(x)))
+        gz_scene_path = os.path.join(self.root_dir, self.filenames[idx])
+        with gzip.open(gz_scene_path, 'rb') as f:
+            # Use an intermediate buffer
+            x = io.BytesIO(f.read())
+            data = torch.load(x)
 
-        images = torch.stack([byte_to_tensor(frame) for frame in data.frames])
+        #byte_to_tensor = lambda x: ToTensor()(Image.open(io.BytesIO(x)))
+        array_to_tensor = lambda x: ToTensor()(Image.fromarray(x))
 
-        viewpoints = torch.from_numpy(data.cameras)
+        images = torch.stack([array_to_tensor(frame) for frame in data[0]])
+
+        viewpoints = torch.from_numpy(data[1])
         viewpoints = viewpoints.view(-1, 5)
 
         if self.transform:
