@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, help='location of model output', default="./output")
     parser.add_argument('--save_every', type=int, help='save models every n updates', default=100)
     parser.add_argument('--print_every', type=int, help='print output every n updates', default=10)
+    parser.add_argument('--resume', type=str, help='location of previous model output', default=None)
 
     args = parser.parse_args()
 
@@ -46,8 +47,31 @@ if __name__ == '__main__':
     mu_f, mu_i = 5*10**(-5), 5*10**(-4)
     mu, sigma = mu_f, sigma_f
 
-    # Create model and optimizer
-    model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=256, h_dim=128, z_dim=64, L=12).to(device)
+    # Load the dataset
+    kwargs = {'num_workers': args.workers, 'pin_memory': True} if cuda else {}
+    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
+    
+
+    if not args.resume is None:
+        model = torch.load(args.resume)
+        log_dir = os.path.dirname(args.resume)
+        log_file = os.path.join(log_dir, 'log.txt')
+        s = int(os.path.basename(args.resume).split(".")[-2].split("-")[-1])
+        print(s)
+
+    else:
+        # Create model and optimizer
+        model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=256, h_dim=128, z_dim=64, L=12).to(device)
+        if not os.path.exists(args.output_dir):
+            os.mkdir(args.output_dir)
+        model_name = 'gqn-face3d-' + datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = os.path.join(args.output_dir, model_name)
+        os.mkdir(log_dir)
+        log_file = os.path.join(log_dir, 'log.txt')
+        with open(log_file, "w") as f:
+            f.write("step, nll, kl\n")
+        # Number of gradient steps
+        s = 0
 
     # Model optimisations
     model = nn.DataParallel(model) if args.data_parallel else model
@@ -55,24 +79,10 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(model.parameters(), lr=mu)
 
-    # Load the dataset
-    kwargs = {'num_workers': args.workers, 'pin_memory': True} if cuda else {}
-    loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
-
-    if not os.path.exists(args.output_dir):
-        os.mkdir(args.output_dir)
-    model_name = 'gqn-face3d-' + datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_dir = os.path.join(args.output_dir, model_name)
-    os.mkdir(log_dir)
-    log_file = os.path.join(log_dir, 'log.txt')
-    with open(log_file, "w") as f:
-        f.write("step, nll, kl\n")
-
-    # Number of gradient steps
-    s = 0
+    
     while True:
         if s >= args.gradient_steps:
-            torch.save(model, "model-final.pt")
+            torch.save(model, os.path.join(log_dir, "model-final.pt"))
             break
 
         for x, v in tqdm(loader):
