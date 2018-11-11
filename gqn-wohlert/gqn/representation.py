@@ -55,11 +55,14 @@ class TowerRepresentation(nn.Module):
         # Second skip-connected conv block (merged)
         skip_in = torch.cat([x, v], dim=1)
         skip_out  = F.relu(self.conv5(skip_in))
+        
 
         x = F.relu(self.conv6(skip_in))
         x = F.relu(self.conv7(x)) + skip_out
 
         r = F.relu(self.conv8(x))
+
+
 
         if self.pool:
             r = self.avgpool(r)

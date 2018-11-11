@@ -56,6 +56,8 @@ class ShepardMetzler(Dataset):
 
         viewpoints = torch.from_numpy(data[1])
         viewpoints = viewpoints.view(-1, 5)
+        print(images.shape)
+        print(viewpoints.shape)
 
         if self.transform:
             images = self.transform(images)

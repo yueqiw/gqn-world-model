@@ -1,0 +1,1 @@
+python run-gqn.py --data_dir /media/yueqi/Data1/data_ml/gqn_dataset/shepard_metzler_7_parts/train_scenes/ --gradient_steps 200000 --batch_size 20 --save_every 100 --output_dir ../output
