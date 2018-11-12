@@ -31,7 +31,7 @@ class TowerRepresentation(nn.Module):
         self.conv7 = nn.Conv2d(k//2, k, kernel_size=3, stride=1, padding=1)
         self.conv8 = nn.Conv2d(k, k, kernel_size=1, stride=1)
 
-        self.avgpool  = nn.AvgPool2d(k//16)
+        self.avgpool  = nn.AvgPool2d(k//32)
 
     def forward(self, x, v):
         """
@@ -43,7 +43,7 @@ class TowerRepresentation(nn.Module):
         """
         # Increase dimensions
         v = v.view(v.size(0), -1, 1, 1)
-        v = v.repeat(1, 1, self.r_dim // 16, self.r_dim // 16)
+        v = v.repeat(1, 1, x.shape[2] // 4, x.shape[2] // 4)
 
         # First skip-connected conv block
         skip_in  = F.relu(self.conv1(x))
