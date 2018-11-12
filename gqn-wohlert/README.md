@@ -1,3 +1,5 @@
+Forked from: https://github.com/wohlert/generative-query-network-pytorch
+
 # Generative Query Network
 
 This is a PyTorch implementation of the Generative Query Network (GQN)

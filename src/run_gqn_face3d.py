@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     else:
         # Create model and optimizer
-        model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=256, h_dim=128, z_dim=64, L=12).to(device)
+        model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=512, h_dim=128, z_dim=64, L=12).to(device)
         if not os.path.exists(args.output_dir):
             os.mkdir(args.output_dir)
         model_name = 'gqn-face3d-' + datetime.now().strftime("%Y%m%d-%H%M%S")
