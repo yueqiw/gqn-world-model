@@ -82,21 +82,25 @@ class GenerativeQueryNetwork(nn.Module):
         :param viewpoint: viewpoint to generate image from
         :param sigma: pixel variance
         """
-        batch_size, n_views, _, h, w = context_x.size()
-        
-        _, _, *x_dims = context_x.size()
-        _, _, *v_dims = context_v.size()
+        with torch.no_grad():
+            batch_size, n_views, _, h, w = context_x.size()
+            
+            _, _, *x_dims = context_x.size()
+            _, _, *v_dims = context_v.size()
 
-        x = context_x.view((-1, *x_dims))
-        v = context_v.view((-1, *v_dims))
+            x = context_x.view((-1, *x_dims))
+            v = context_v.view((-1, *v_dims))
 
-        phi = self.representation(x, v)
+            phi = self.representation(x, v)
 
-        _, *phi_dims = phi.size()
-        phi = phi.view((batch_size, n_views, *phi_dims))
+            _, *phi_dims = phi.size()
+            phi = phi.view((batch_size, n_views, *phi_dims))
 
-        r = torch.sum(phi, dim=1)
+            r = torch.sum(phi, dim=1)
 
-        x_mu = self.generator.sample((h, w), viewpoint, r)
-        x_sample = Normal(x_mu, sigma).sample()
+            x_mu = self.generator.sample((h, w), viewpoint, r)
+            x_sample = x_mu 
+        # Due to the fact that we do not learn per-pixel variances, 
+        # in figures, we show the mean value of each pixel conditioned on the sampled latent variables.
+        # x_sample = Normal(x_mu, sigma).sample()
         return x_sample

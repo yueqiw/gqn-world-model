@@ -15,21 +15,26 @@ def resize_img(img, s=64):
     return transform(img)
 
 class Face3D(Dataset):
-    def __init__(self, root_dir, n_imgs=15, resize=64, transform=None, target_transform=None):
+    def __init__(self, root_dir, n_imgs=15, resize=64, 
+                transform=None, target_transform=None, sample_type='angle_random'):
         self.root_dir = root_dir 
         self.folder_names = [x for x in os.listdir(os.path.join(self.root_dir)) if x.startswith("face")]
         self.n_imgs = n_imgs 
         self.transform = transform
         self.target_transform = target_transform
         self.resize = 64
+        self.sample_type = sample_type
 
     def __len__(self):
         return len(self.folder_names)
 
     def __getitem__(self, idx):
-        face_path = os.path.join(self.root_dir, self.folder_names[idx], 'angle_random')
+        face_path = os.path.join(self.root_dir, self.folder_names[idx], self.sample_type)
         files = [x for x in os.listdir(face_path) if x.endswith(".jpg")]
-        use = np.random.choice(len(files), self.n_imgs, replace=False) 
+        if self.n_imgs == 'all':
+            use = np.arange(len(files))
+        else:
+            use = np.random.choice(len(files), self.n_imgs, replace=False) 
         images = []
         viewpoints = []
         for i in use:

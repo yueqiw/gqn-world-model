@@ -34,6 +34,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_every', type=int, help='save models every n updates', default=100)
     parser.add_argument('--print_every', type=int, help='print output every n updates', default=10)
     parser.add_argument('--resume', type=str, help='location of previous model output', default=None)
+    parser.add_argument('--no_annealing', dest='annealing', action='store_false', help='whether to anneal lr and pixel variance')
+    parser.set_defaults(annealing=True)
 
     args = parser.parse_args()
 
@@ -54,7 +56,7 @@ if __name__ == '__main__':
 
     if not args.resume is None:
         model = torch.load(args.resume)
-        log_dir = os.path.dirname(args.resume)
+        log_dir = os.path.dirname(os.path.dirname(args.resume)) ## model-xxxx/checkpoints/model-xxx.pt
         log_file = os.path.join(log_dir, 'log.txt')
         s = int(os.path.basename(args.resume).split(".")[-2].split("-")[-1])
         print(s)
@@ -72,6 +74,17 @@ if __name__ == '__main__':
             f.write("step, nll, kl\n")
         # Number of gradient steps
         s = 0
+    
+    checkpoint_dir = os.path.join(log_dir, "checkpoints")
+    representation_dir = os.path.join(log_dir, "representation")
+    reconstruction_dir = os.path.join(log_dir, "reconstruction")
+    if not os.path.exists(checkpoint_dir): 
+        os.mkdir(checkpoint_dir)
+    if not os.path.exists(representation_dir): 
+        os.mkdir(representation_dir)
+    if not os.path.exists(reconstruction_dir): 
+        os.mkdir(reconstruction_dir)
+        
 
     # Model optimisations
     model = nn.DataParallel(model) if args.data_parallel else model
@@ -82,7 +95,7 @@ if __name__ == '__main__':
     
     while True:
         if s >= args.gradient_steps:
-            torch.save(model, os.path.join(log_dir, "model-final.pt"))
+            torch.save(model, os.path.join(checkpoint_dir, "model-final.pt"))
             break
 
         for x, v in tqdm(loader):
@@ -113,9 +126,18 @@ if __name__ == '__main__':
 
             s += 1
 
-            # Keep a checkpoint every 100,000 steps
+            if args.annealing:
+                # Anneal learning rate
+                mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
+                for group in optimizer.param_groups:
+                    group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
+
+                # Anneal pixel variance
+                sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)
+
+            # Save a checkpoint 
             if s % args.save_every == 0:
-                torch.save(model, os.path.join(log_dir, "model-{}.pt".format(s)))
+                torch.save(model, os.path.join(checkpoint_dir, "model-{}.pt".format(s)))
 
             if s % args.print_every == 0:
                 with torch.no_grad():
@@ -130,13 +152,7 @@ if __name__ == '__main__':
 
                     r = r.view(-1, 1, 16, 16)
 
-                    save_image(r.float(), os.path.join(log_dir, "representation-{}.jpg".format(s)))
-                    save_image(x_mu.float(), os.path.join(log_dir, "reconstruction-{}.jpg".format(s)))
+                    save_image(r.float(), os.path.join(representation_dir, "representation-{}.jpg".format(s)))
+                    save_image(x_mu.float(), os.path.join(reconstruction_dir, "reconstruction-{}.jpg".format(s)))
 
-        # # Anneal learning rate
-        # mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
-        # for group in optimizer.param_groups:
-        #     group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
-
-        # # Anneal pixel variance
-        # sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)
+        

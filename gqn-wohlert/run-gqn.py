@@ -104,6 +104,14 @@ if __name__ == '__main__':
 
             s += 1
 
+            # Anneal learning rate
+            mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
+            for group in optimizer.param_groups:
+                group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
+
+            # Anneal pixel variance
+            sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)
+
             # Keep a checkpoint every 100,000 steps
             if s % args.save_every == 0:
                 torch.save(model, os.path.join(log_dir, "model-{}.pt".format(s)))
@@ -122,10 +130,4 @@ if __name__ == '__main__':
                     save_image(r.float(), os.path.join(log_dir, "representation-{}.jpg".format(s)))
                     save_image(x_mu.float(), os.path.join(log_dir, "reconstruction-{}.jpg".format(s)))
 
-        # Anneal learning rate
-        mu = max(mu_f + (mu_i - mu_f)*(1 - s/(1.6 * 10**6)), mu_f)
-        for group in optimizer.param_groups:
-            group["lr"] = mu * math.sqrt(1 - 0.999**s)/(1 - 0.9**s)
-
-        # Anneal pixel variance
-        sigma = max(sigma_f + (sigma_i - sigma_f)*(1 - s/(2 * 10**5)), sigma_f)
+        
