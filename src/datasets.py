@@ -5,6 +5,7 @@ from torchvision.transforms import Resize, Compose, ToTensor
 from torch.utils.data import Dataset
 from skimage import io as skio
 import numpy as np
+import pickle 
 
 
 def transform_viewpoint(v):
@@ -62,4 +63,72 @@ class Face3D(Dataset):
         return images, viewpoints
 
 
+class AgentScenesUnity(Dataset):
+    def __init__(self, root_dir, n_actions, n_timesteps=10, resize=None, transform=None, 
+                target_transform=None, sample_type='continuous'):
+        self.root_dir = root_dir
+        self.filenames = [x for x in os.listdir(os.path.join(self.root_dir)) if x.endswith(".p")]
+        self.filenames = sorted(self.filenames, key=lambda x: int(x.strip('.p')))
+        self.n_timesteps = n_timesteps 
+        self.transform = transform
+        self.target_transform = target_transform
+        self.resize = 64
+        self.sample_type = sample_type
+        self.n_actions = n_actions + 1 # plus no action
+
+    def __len__(self):
+        return len(self.filenames)
+    
+    def actions_to_onehot(self, actions, n):
+        onehot = torch.FloatTensor(len(actions), n).zero_()
+        onehot.scatter_(1, torch.unsqueeze(actions, 1), 1)
+        return onehot
+    
+    def random_timesteps(self, n_total, n_select, method='continuous'):
+        if method == 'all':
+            return torch.arange(n_total)
+        if n_select > n_total: 
+            n_select = n_total 
+        n = n_total - n_select + 1
+        start = np.random.randint(n) 
+        timesteps = np.arange(start, start + n_select)
+        return timesteps
+    
+    def transform_time(self, timesteps):
+        timesteps = torch.FloatTensor(timesteps)
+        normalized = timesteps - timesteps[-2]
+        normalized = normalized / 10
+        return normalized
+    
+    def __getitem__(self, idx):
+        filepath = os.path.join(self.root_dir, self.filenames[idx])
         
+        with open(filepath, "rb") as f:
+            data = pickle.load(f)
+        
+        total_timesteps = len(data['previous_action']) - 1
+        timesteps_use = self.random_timesteps(total_timesteps, self.n_timesteps, method='continuous')
+
+        subset_action = [data['previous_action'][1:][i] for i in timesteps_use]
+        subset_vector_obs = [data['vector_observation'][:-1][i] for i in timesteps_use]
+        subset_reward = [data['reward'][1:][i] for i in timesteps_use]
+        subset_visual_obs = [data['visual_observation'][:-1][i] for i in timesteps_use]
+
+
+        time_transform = self.transform_time(timesteps_use)
+        
+        # align previous action and reward with current observations. 
+        actions = torch.LongTensor([x[0] for x in subset_action])
+        actions_oh = self.actions_to_onehot(actions, self.n_actions)
+        
+        rewards = torch.FloatTensor(subset_reward)
+        vector_obs = torch.from_numpy(np.stack(subset_vector_obs))
+        images = np.stack(subset_visual_obs)
+        images = torch.FloatTensor(images.transpose((0,3,1,2)))
+
+        if self.transform:
+           images = self.transform(images)
+        
+        queries = torch.cat([time_transform.unsqueeze(1), actions_oh], 1)
+            
+        return images, queries
