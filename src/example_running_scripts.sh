@@ -40,3 +40,16 @@ python run_gqn_unity.py \
 --save_every 500 \
 --print_every 500
 
+
+
+    
+python run_gqn_unity.py \
+--data_dir ~/gqn_dataset/PyramidsCamera2/train \
+--model_name PyramidsCamera \
+--output_dir ../output \
+--n_timesteps 10 \
+--gradient_steps 50000 \
+--batch_size 36 \
+--save_every 500 \
+--print_every 500
+

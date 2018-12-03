@@ -53,7 +53,7 @@ def sample(model, context_x, context_v, viewpoint, sigma):
     return x_sample # (n_batch, *img_shape)
 
 
-def sample_multiview(model, context_x, context_v, viewpoint, sigma):
+def sample_multiview(model, context_x, context_v, viewpoint, sigma=None):
     """
     Sample from the network given some context and viewpoint.
 
@@ -150,4 +150,38 @@ def multi_context_rendering(model, dataset, idx, n_context, sigma, figdir='figur
     
     render_viewpoints_1(model, x, v, sigma, os.path.join(figdir, 'data{}_multi_ctxt_{}_render1.jpg'.format(idx, n_context)))
     render_viewpoints_2(model, x, v, sigma, os.path.join(figdir, 'data{}_multi_ctxt_{}_render2.jpg'.format(idx, n_context)))
+
+
+def actions_to_onehot(actions, n):
+    onehot = torch.FloatTensor(len(actions), n).zero_()
+    onehot.scatter_(1, torch.unsqueeze(actions, 1), 1)
+    return onehot
+
+
+def render_next_action(model, dataset, idx, n_steps, figdir='figures', postfix="", device='cpu'):
+    x_all, v_all = dataset[idx] 
+    x_all, v_all = x_all.to(device), v_all.to(device) 
+    if n_steps == None:
+        n_steps = dataset.n_timesteps - 1
+    x, v = x_all[-n_steps-1:-1], v_all[-n_steps-1:-1] 
+    x, v = x.reshape(1, *x.shape), v.reshape(1, *v.shape)
+    
+    time_next = v_all[-1,0]
+    time_next = torch.ones(dataset.n_actions) * time_next
+    
+    actions = torch.arange(dataset.n_actions) 
+    actions = actions_to_onehot(actions, dataset.n_actions)
+
+    queries = torch.cat([time_next.unsqueeze(1), actions], 1)
+    queries = queries.reshape(1, *queries.shape)
+    #print(queries)
+    if not os.path.exists(figdir): 
+        os.mkdir(figdir) 
+
+    out = sample_multiview(model, x, v, queries)
+    img_path = os.path.join(figdir, 'data{}_step_{}_render1_{}.jpg'.format(idx, n_steps, postfix))
+    save_image(out[0], img_path, nrow=out.shape[1])
+    img_path = os.path.join(figdir, 'data{}_step_{}_input1_{}.jpg'.format(idx, n_steps, postfix))
+    save_image(x_all[-n_steps-1:], img_path, nrow=x_all.shape[0])
+    
     
