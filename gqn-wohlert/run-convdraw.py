@@ -1,6 +1,7 @@
 import argparse
 from tqdm import tqdm
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -38,10 +39,10 @@ if __name__ == '__main__':
         x_dim, x_shape = 1, (28, 28)
 
     elif args.dataset == "SVHN":
-        mean, std = (0.4376, 0.4437, 0.4728), (0.198, 0.201, 0.197)
+        mean, std = 0.45, 0.2 # (0.4376, 0.4437, 0.4728), (0.198, 0.201, 0.197)
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=mean, std=std)
+            transforms.Normalize(mean=(mean, mean, mean), std=(std, std, std))
         ])
         dataset = SVHN(root=args.data_dir, split="train", download=True, transform=transform)
         loss = nn.MSELoss(reduce=False)
@@ -81,11 +82,11 @@ if __name__ == '__main__':
                 print("Loss at step {}: {}".format(epoch, elbo.item()))
 
                 # Not sustainable if not dataparallel
-                x_sample = model.module.sample(args.batch_size)
-
+                x_sample = model.sample(x)
+                print(x_sample.size())
                 # Renormalize to visualise
-                x_sample = (x_sample - mean)/std
-                x_hat = (x_hat - mean)/std
+                x_sample = x_sample * std + mean
+                x_hat = x_hat * std + mean 
 
                 save_image(x_hat, "reconstruction-{}.jpg".format(epoch))
                 save_image(x_sample, "sample-{}.jpg".format(epoch))

@@ -59,19 +59,19 @@ class Face3D(Dataset):
 
         if self.target_transform:
             viewpoints = self.target_transform(viewpoints)
-        
+
         return images, viewpoints
 
 
 class AgentScenesUnity(Dataset):
     def __init__(self, root_dir, n_actions, n_timesteps=10, resize=None, transform=None, 
-                target_transform=None, sample_type='continuous'):
+                query_transform=None, sample_type='continuous'):
         self.root_dir = root_dir
         self.filenames = [x for x in os.listdir(os.path.join(self.root_dir)) if x.endswith(".p")]
         self.filenames = sorted(self.filenames, key=lambda x: int(x.strip('.p')))
         self.n_timesteps = n_timesteps 
         self.transform = transform
-        self.target_transform = target_transform
+        self.query_transform = query_transform
         self.resize = 64
         self.sample_type = sample_type
         self.n_actions = n_actions + 1 # plus no action

@@ -21,12 +21,12 @@ class GenerativeQueryNetwork(nn.Module):
     :param h_dim: hidden channels in LSTM
     :param L: Number of refinements of density
     """
-    def __init__(self, x_dim, v_dim, r_dim, h_dim, z_dim, L=12):
+    def __init__(self, x_dim, v_dim, r_dim, h_dim, z_dim, L=12, pool=False):
         super(GenerativeQueryNetwork, self).__init__()
         self.r_dim = r_dim
 
         self.generator = GeneratorNetwork(x_dim, v_dim, r_dim, z_dim, h_dim, L)
-        self.representation = TowerRepresentation(x_dim, v_dim, r_dim, pool=True)
+        self.representation = TowerRepresentation(x_dim, v_dim, r_dim, pool=pool)
         #self.representation = PyramidRepresentation(x_dim, v_dim, r_dim)
 
     def forward(self, images, viewpoints):

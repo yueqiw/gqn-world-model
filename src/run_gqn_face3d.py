@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    dataset = Face3D(root_dir=args.data_dir, target_transform=transform_viewpoint)
+    dataset = Face3D(root_dir=args.data_dir, n_imgs=15, target_transform=transform_viewpoint)
     print("\ntotal number of samples: {}\n".format(len(dataset)))
 
     # Pixel variance
@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
     else:
         # Create model and optimizer
-        model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=512, h_dim=128, z_dim=64, L=12).to(device)
+        model = GenerativeQueryNetwork(x_dim=3, v_dim=3, r_dim=512, h_dim=128, z_dim=64, L=10, pool=True).to(device)
         if not os.path.exists(args.output_dir):
             os.mkdir(args.output_dir)
         model_name = 'gqn-face3d-' + datetime.now().strftime("%Y%m%d-%H%M%S")
