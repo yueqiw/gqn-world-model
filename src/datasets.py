@@ -115,17 +115,17 @@ class AgentScenesUnity(Dataset):
             with open(filepath, "rb") as f:
                 data = pickle.load(f)
         
-        total_timesteps = len(data['previous_action']) - 1
+        total_timesteps = len(data['previous_action'])
 
         if total_timesteps < self.n_timesteps:
             return self.__getitem__(np.random.randint(len(self.filenames)))
 
         timesteps_use = self.random_timesteps(total_timesteps, self.n_timesteps, method='continuous')
 
-        subset_action = [data['previous_action'][1:][i] for i in timesteps_use]
-        subset_vector_obs = [data['vector_observation'][:-1][i] for i in timesteps_use]
-        subset_reward = [data['reward'][1:][i] for i in timesteps_use]
-        subset_visual_obs = [data['visual_observation'][:-1][i] for i in timesteps_use]
+        subset_action = [data['previous_action'][i] for i in timesteps_use]
+        subset_vector_obs = [data['vector_observation'][i] for i in timesteps_use]
+        subset_reward = [data['reward'][i] for i in timesteps_use]
+        subset_visual_obs = [data['visual_observation'][i] for i in timesteps_use]
 
 
         time_transform = self.transform_time(timesteps_use)
