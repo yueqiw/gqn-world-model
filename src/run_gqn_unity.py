@@ -34,8 +34,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, help='location of training data')
     parser.add_argument('--model_name', type=str, help='location of training data')
     parser.add_argument('--output_dir', type=str, help='location of model output', default="./output")
-    parser.add_argument('--n_query', type=int, default=36, help='size of batch (default: 36)')
-
+    parser.add_argument('--n_timesteps', type=int, default=10, help='number of time steps from game')
     parser.add_argument('--gradient_steps', type=int, default=2*(10**6), help='number of gradient steps to run (default: 2 million)')
     parser.add_argument('--batch_size', type=int, default=36, help='size of batch (default: 36)')
     
@@ -53,7 +52,7 @@ if __name__ == '__main__':
 
     dataset = AgentScenesUnity(root_dir=args.data_dir, 
                     n_actions=n_actions[args.model_name], 
-                    n_timesteps=8) 
+                    n_timesteps=args.n_timesteps) 
 
     query_dim = n_actions[args.model_name] + 1 + 1  # action + no action + time 
     print("\ntotal number of samples: {}\n".format(len(dataset))) 
@@ -63,7 +62,7 @@ if __name__ == '__main__':
 
     # Learning rate
     mu_f, mu_i = 5*10**(-5), 5*10**(-4)
-    mu, sigma = mu_f, sigma_f
+    mu, sigma = mu_i, sigma_i
 
     # Load the dataset
     kwargs = {'num_workers': args.workers, 'pin_memory': True} if cuda else {}

@@ -1,6 +1,6 @@
 from mlagents.envs import UnityEnvironment
 import numpy as np 
-import pickle, os
+import pickle, os, gzip
 from collections import defaultdict
 import argparse
 
@@ -41,7 +41,7 @@ while count < args.n:
         to_store[i]['visual_observation'].append(env_info.visual_observations[0][i])
         if env_info.local_done[i]:
             count += 1
-            with open(os.path.join(args.output_dir, str(count)+'.p'), "wb") as f:
+            with gzip.open(os.path.join(args.output_dir, str(count)+'.pkl.gz'), "wb") as f:
                 pickle.dump(to_store[i], f)
             to_store[i] = defaultdict(list)
 
