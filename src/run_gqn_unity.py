@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 sys.path.append("../gqn-wohlert")
-from gqn import GenerativeQueryNetwork
+from gqn import GenerativeQueryNetwork, GQNTimeSeriesSum
 from datasets import AgentScenesUnity
 
 cuda = torch.cuda.is_available()
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     else:
         # Create model and optimizer
-        model = GenerativeQueryNetwork(x_dim=3, v_dim=query_dim, r_dim=512, h_dim=128, z_dim=64, L=10, pool=False).to(device)
+        model = GQNTimeSeriesSum(x_dim=3, v_dim=query_dim, r_dim=512, h_dim=128, z_dim=64, L=10, pool=False).to(device)
         if not os.path.exists(args.output_dir):
             os.mkdir(args.output_dir)
         model_name = 'gqn-' + args.model_name + '-' + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         os.mkdir(representation_dir)
     if not os.path.exists(reconstruction_dir): 
         os.mkdir(reconstruction_dir)
-        
+    
 
     # Model optimisations
     model = nn.DataParallel(model) if args.data_parallel else model
@@ -163,11 +163,12 @@ if __name__ == '__main__':
                     x, v = next(iter(loader))
                     x, v = x.to(device), v.to(device)
 
-                    x_mu, _, r, _ = model(x, v)
+                    x_mu, x_q, r, _ = model(x, v)
 
                     r = r.view(-1, 1, 16, 16)
 
                     save_image(r.float(), os.path.join(representation_dir, "representation-{}.jpg".format(s)))
                     save_image(x_mu.float(), os.path.join(reconstruction_dir, "reconstruction-{}.jpg".format(s)))
+                    save_image(x_q.float(), os.path.join(reconstruction_dir, "ground-truth-{}.jpg".format(s)))
 
         
