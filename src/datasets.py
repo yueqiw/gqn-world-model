@@ -133,7 +133,7 @@ class AgentScenesUnity(Dataset):
         # align previous action and reward with current observations. 
         actions = torch.LongTensor([x[0] for x in subset_action])
         actions_oh = self.actions_to_onehot(actions, self.n_actions)
-        
+
         rewards = torch.FloatTensor(subset_reward)
         vector_obs = torch.from_numpy(np.stack(subset_vector_obs))
         images = np.stack(subset_visual_obs)
@@ -144,4 +144,4 @@ class AgentScenesUnity(Dataset):
         
         queries = torch.cat([time_transform.unsqueeze(1), actions_oh], 1)
             
-        return images, queries
+        return images, queries, actions

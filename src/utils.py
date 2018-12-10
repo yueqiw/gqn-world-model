@@ -20,7 +20,7 @@ from gqn import GenerativeQueryNetwork
 from datasets import Face3D, transform_viewpoint
 
 
-def sample(model, context_x, context_v, viewpoint, sigma):
+def sample(model, context_x, context_v, viewpoint):
     """
     Sample from the network given some context and viewpoint.
 
@@ -53,7 +53,7 @@ def sample(model, context_x, context_v, viewpoint, sigma):
     return x_sample # (n_batch, *img_shape)
 
 
-def sample_multiview(model, context_x, context_v, viewpoint, sigma=None):
+def sample_multiview(model, context_x, context_v, viewpoint):
     """
     Sample from the network given some context and viewpoint.
 
@@ -158,30 +158,36 @@ def actions_to_onehot(actions, n):
     return onehot
 
 
-def render_next_action(model, dataset, idx, n_steps, figdir='figures', postfix="", device='cpu'):
-    x_all, v_all = dataset[idx] 
+def render_next_action(model, dataset, idx, n_steps, figdir='figures', postfix="", device='cpu', save=True):
+    x_all, v_all, actions_all = dataset[idx] 
     x_all, v_all = x_all.to(device), v_all.to(device) 
     if n_steps == None:
-        n_steps = dataset.n_timesteps - 1
-    x, v = x_all[-n_steps-1:-1], v_all[-n_steps-1:-1] 
+        n_steps = dataset.n_timesteps
+    x, v = x_all[-n_steps:-1], v_all[-n_steps:-1]
     x, v = x.reshape(1, *x.shape), v.reshape(1, *v.shape)
+    actions = actions_all[-n_steps:]
     
     time_next = v_all[-1,0]
     time_next = torch.ones(dataset.n_actions) * time_next
     
-    actions = torch.arange(dataset.n_actions) 
-    actions = actions_to_onehot(actions, dataset.n_actions)
+    action_options = torch.arange(dataset.n_actions) 
+    actions_oh = actions_to_onehot(action_options, dataset.n_actions)
 
-    queries = torch.cat([time_next.unsqueeze(1), actions], 1)
+    queries = torch.cat([time_next.unsqueeze(1), actions_oh], 1)
     queries = queries.reshape(1, *queries.shape)
     #print(queries)
     if not os.path.exists(figdir): 
         os.mkdir(figdir) 
 
     out = sample_multiview(model, x, v, queries)
-    img_path = os.path.join(figdir, 'data{}_step_{}_render1_{}.jpg'.format(idx, n_steps, postfix))
-    save_image(out[0], img_path, nrow=out.shape[1])
-    img_path = os.path.join(figdir, 'data{}_step_{}_input1_{}.jpg'.format(idx, n_steps, postfix))
-    save_image(x_all[-n_steps-1:], img_path, nrow=x_all.shape[0])
+    if save:
+        img_path = os.path.join(figdir, 'data{}_step{}_a{}_renderlast{}.jpg'.format(idx, n_steps, ''.join([str(x) for x in np.array(actions)]), postfix))
+        save_image(out[0], img_path, nrow=out.shape[1])
+        img_path = os.path.join(figdir, 'data{}_step{}_a{}_inputseq{}.jpg'.format(idx, n_steps, ''.join([str(x) for x in np.array(actions)]), postfix))
+        save_image(x_all[-n_steps:], img_path, nrow=x_all.shape[0])
     
-    
+    with torch.no_grad():
+        loss = nn.MSELoss(reduction='none')
+        mse_loss = loss(out[0], x_all[-1]).mean((1,2,3))
+
+    return out[0], x_all[-1], int(actions[-1]), mse_loss

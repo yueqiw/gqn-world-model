@@ -15,8 +15,9 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 sys.path.append("../gqn-wohlert")
-from gqn import GenerativeQueryNetwork, GQNTimeSeriesSum
+from gqn import GenerativeQueryNetwork, GQNTimeSeriesSum, GQNTimeSeriesLSTM
 from datasets import AgentScenesUnity
+from utils import * 
 
 cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if cuda else "cpu")
@@ -27,12 +28,19 @@ n_actions = {
     'PyramidsCamera': 4 
 }
 
+gqn_model = {
+    'gqn_original': GenerativeQueryNetwork, 
+    'GQNTimeSeriesSum': GQNTimeSeriesSum, 
+    'GQNTimeSeriesLSTM': GQNTimeSeriesLSTM
+}
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generative Query Network on Shepard Metzler Example')
+    parser = argparse.ArgumentParser(description='Generative Query Network on')
 
     parser.add_argument('--data_dir', type=str, help='location of training data')
-    parser.add_argument('--model_name', type=str, help='location of training data')
+    parser.add_argument('--model_name', type=str, help='Game model')
+    parser.add_argument('--gqn_model', type=str, help='gqn model')
     parser.add_argument('--output_dir', type=str, help='location of model output', default="./output")
     parser.add_argument('--n_timesteps', type=int, default=10, help='number of time steps from game')
     parser.add_argument('--gradient_steps', type=int, default=2*(10**6), help='number of gradient steps to run (default: 2 million)')
@@ -78,10 +86,10 @@ if __name__ == '__main__':
 
     else:
         # Create model and optimizer
-        model = GQNTimeSeriesSum(x_dim=3, v_dim=query_dim, r_dim=512, h_dim=128, z_dim=64, L=10, pool=False).to(device)
+        model = gqn_model[args.gqn_model](x_dim=3, v_dim=query_dim, r_dim=256, h_dim=128, z_dim=64, L=10, pool=False).to(device)
         if not os.path.exists(args.output_dir):
             os.mkdir(args.output_dir)
-        model_name = 'gqn-' + args.model_name + '-' + datetime.now().strftime("%Y%m%d-%H%M%S")
+        model_name = 'gqn-' + args.model_name + '-' + args.gqn_model + '-' + datetime.now().strftime("%Y%m%d-%H%M%S")
         log_dir = os.path.join(args.output_dir, model_name)
         os.mkdir(log_dir)
         log_file = os.path.join(log_dir, 'log.txt')
@@ -113,7 +121,7 @@ if __name__ == '__main__':
             torch.save(model, os.path.join(checkpoint_dir, "model-final.pt"))
             break
 
-        for x, v in tqdm(loader):
+        for x, v, actions in tqdm(loader):
             if args.fp16:
                 x, v = x.half(), v.half()
 
@@ -153,22 +161,32 @@ if __name__ == '__main__':
             # Save a checkpoint 
             if s % args.save_every == 0:
                 torch.save(model, os.path.join(checkpoint_dir, "model-{}.pt".format(s)))
+                with torch.no_grad():
+                    x, v, actions = next(iter(loader))
+                    x, v = x.to(device), v.to(device)
+                    
+                    # reconstruct
+                    x_mu, x_q, r, _ = model(x, v, random_n=False)
+                    
+                    # sample
+                    batch_size, m, *_ = v.size()
+                    indices = torch.arange(m)
+                    representation_idx, query_idx = indices[:m-1], indices[m-1]
+                    x_context, v_context = x[:, representation_idx], v[:, representation_idx]
+                    x_sample = model.sample(x_context, v_context, v[:, query_idx])
+
+                    #r = r.view(-1, 1, 16, 16)
+
+                    #save_image(r.float(), os.path.join(representation_dir, "representation-{}.jpg".format(s)))
+                    save_image(x_mu.float(), os.path.join(reconstruction_dir, "s{}-reconstruction.jpg".format(s)))
+                    save_image(x_q.float(), os.path.join(reconstruction_dir, "s{}-ground-truth.jpg".format(s)))
+                    save_image(x_sample.float(), os.path.join(reconstruction_dir, "s{}-sample.jpg".format(s)))
 
             if s % args.print_every == 0:
-                with torch.no_grad():
-                    print("|Steps: {}\t|NLL: {}\t|KL: {}\t|".format(s, reconstruction.item(), kl_divergence.item()))
-                    with open(log_file, 'a') as f:
-                        f.write("{}, {}, {}\n".format(s, reconstruction.item(), kl_divergence.item()))
+                print("|Steps: {}\t|NLL: {}\t|KL: {}\t|".format(s, reconstruction.item(), kl_divergence.item()))
+                with open(log_file, 'a') as f:
+                    f.write("{}, {}, {}\n".format(s, reconstruction.item(), kl_divergence.item()))
 
-                    x, v = next(iter(loader))
-                    x, v = x.to(device), v.to(device)
-
-                    x_mu, x_q, r, _ = model(x, v)
-
-                    r = r.view(-1, 1, 16, 16)
-
-                    save_image(r.float(), os.path.join(representation_dir, "representation-{}.jpg".format(s)))
-                    save_image(x_mu.float(), os.path.join(reconstruction_dir, "reconstruction-{}.jpg".format(s)))
-                    save_image(x_q.float(), os.path.join(reconstruction_dir, "ground-truth-{}.jpg".format(s)))
+                    
 
         
