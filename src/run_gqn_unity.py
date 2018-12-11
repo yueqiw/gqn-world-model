@@ -23,9 +23,9 @@ cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if cuda else "cpu")
 
 n_actions = {
-    'PushBlockCamera': 6,
+    'PushBlockCamera': 6,  # forward, backward, turn clockwise, turn counter-clock, move left, move right
     'HallwayCamera': 4,
-    'PyramidsCamera': 4 
+    'PyramidsCamera': 4  
 }
 
 gqn_model = {

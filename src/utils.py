@@ -90,6 +90,48 @@ def sample_multiview(model, context_x, context_v, viewpoint):
         # x_sample = Normal(x_mu, sigma).sample()
     return x_sample  # (n_batch, n_viewpoints, *img_shape)
 
+def sample_multiview_lstm(model, context_x, context_v, viewpoint):
+    """
+    Sample from the network given some context and viewpoint.
+
+    :param context_x: set of context images to generate representation
+    :param context_v: viewpoints of `context_x`, (n_batch, n_viewpoints, v_dim)
+    :param viewpoint: viewpoint to generate image from
+    :param sigma: pixel variance
+    """
+    with torch.no_grad():
+        batch_size, n_views, _, h, w = context_x.size()
+
+        _, _, *x_dims = context_x.size()
+        _, _, *v_dims = context_v.size()
+
+        x = context_x.view((-1, *x_dims))
+        v = context_v.view((-1, *v_dims))
+
+        phi = model.representation(x, v)
+
+        _, *phi_dims = phi.size()
+        phi = phi.view((batch_size, n_views, *phi_dims))
+
+        # lstm aggregator of view representations 
+        hidden_a = x.new_zeros((batch_size, *phi_dims))
+        cell_a = x.new_zeros((batch_size, *phi_dims))
+        for i in range(n_views):
+            hidden_a, cell_a = model.lstm_aggregator(phi[:, i], [hidden_a, cell_a])
+        r = hidden_a
+
+        x_sample = []
+        for i in range(viewpoint.shape[1]):
+            x_mu = model.generator.sample((h, w), viewpoint[:,i,:], r)
+            x_sample.append(x_mu)
+        x_sample = torch.stack(x_sample)
+
+        x_sample = x_sample.transpose(0,1)
+        # Due to the fact that we do not learn per-pixel variances, 
+        # in figures, we show the mean value of each pixel conditioned on the sampled latent variables.
+        # x_sample = Normal(x_mu, sigma).sample()
+    return x_sample  # (n_batch, n_viewpoints, *img_shape)
+
 def render_viewpoints_1(model, x, v, sigma, img_path):
     '''
     x: (n_context, *imgshape)
@@ -158,7 +200,7 @@ def actions_to_onehot(actions, n):
     return onehot
 
 
-def render_next_action(model, dataset, idx, n_steps, figdir='figures', postfix="", device='cpu', save=True):
+def render_next_action(model, dataset, idx, n_steps, render_func=sample_multiview, figdir='figures', postfix="", device='cpu', save=True):
     x_all, v_all, actions_all = dataset[idx] 
     x_all, v_all = x_all.to(device), v_all.to(device) 
     if n_steps == None:
@@ -175,11 +217,53 @@ def render_next_action(model, dataset, idx, n_steps, figdir='figures', postfix="
 
     queries = torch.cat([time_next.unsqueeze(1), actions_oh], 1)
     queries = queries.reshape(1, *queries.shape)
+    queries = queries.to(device)
     #print(queries)
     if not os.path.exists(figdir): 
         os.mkdir(figdir) 
 
-    out = sample_multiview(model, x, v, queries)
+    out = render_func(model, x, v, queries)
+    if save:
+        img_path = os.path.join(figdir, 'data{}_step{}_a{}_renderlast{}.jpg'.format(idx, n_steps, ''.join([str(x) for x in np.array(actions)]), postfix))
+        save_image(out[0], img_path, nrow=out.shape[1])
+        img_path = os.path.join(figdir, 'data{}_step{}_a{}_inputseq{}.jpg'.format(idx, n_steps, ''.join([str(x) for x in np.array(actions)]), postfix))
+        save_image(x_all[-n_steps:], img_path, nrow=x_all.shape[0])
+    
+    with torch.no_grad():
+        loss = nn.MSELoss(reduction='none')
+        mse_loss = loss(out[0], x_all[-1]).mean((1,2,3))
+
+    return out[0], x_all[-1], int(actions[-1]), mse_loss
+
+
+def render_next_action(model, dataset, idx, n_steps, start=None,end=None, n_actions=None, render_func=sample_multiview, figdir='figures', postfix="", device='cpu', save=True):
+    x_all, v_all, actions_all = dataset[idx] 
+    x_all, v_all = x_all.to(device), v_all.to(device) 
+    if (not start is None) and (not end is None):
+         x_all, v_all, actions_all = x_all[start:end], v_all[start:end] - v_all[end-1], actions_all[start:end]
+    
+    if n_steps is None:
+        n_steps = dataset.n_timesteps
+    x, v = x_all[-n_steps:-1], v_all[-n_steps:-1]
+    x, v = x.reshape(1, *x.shape), v.reshape(1, *v.shape)
+    actions = actions_all[-n_steps:]
+    
+    if n_actions is None:
+        n_actions = dataset.n_actions
+    time_next = v_all[-1,0]
+    time_next = torch.ones(n_actions) * time_next
+    
+    action_options = torch.arange(n_actions) 
+    actions_oh = actions_to_onehot(action_options, n_actions)
+
+    queries = torch.cat([time_next.unsqueeze(1), actions_oh], 1)
+    queries = queries.reshape(1, *queries.shape)
+    queries = queries.to(device)
+    #print(queries)
+    if not os.path.exists(figdir): 
+        os.mkdir(figdir) 
+
+    out = render_func(model, x, v, queries)
     if save:
         img_path = os.path.join(figdir, 'data{}_step{}_a{}_renderlast{}.jpg'.format(idx, n_steps, ''.join([str(x) for x in np.array(actions)]), postfix))
         save_image(out[0], img_path, nrow=out.shape[1])

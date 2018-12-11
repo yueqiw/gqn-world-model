@@ -65,7 +65,7 @@ class Face3D(Dataset):
 
 class AgentScenesUnity(Dataset):
     def __init__(self, root_dir, n_actions, n_timesteps=10, resize=None, transform=None, 
-                query_transform=None, sample_type='continuous', compress=True):
+                query_transform=None, sample_type='continuous', compress=True, use_all_steps=False):
         self.root_dir = root_dir
         if compress:
             self.filenames = [x for x in os.listdir(os.path.join(self.root_dir)) if x.endswith(".p.gz")]
@@ -80,6 +80,7 @@ class AgentScenesUnity(Dataset):
         self.sample_type = sample_type
         self.n_actions = n_actions + 1 # plus no action
         self.compress = compress
+        self.use_all_steps = use_all_steps
 
     def __len__(self):
         return len(self.filenames)
@@ -120,7 +121,10 @@ class AgentScenesUnity(Dataset):
         if total_timesteps < self.n_timesteps:
             return self.__getitem__(np.random.randint(len(self.filenames)))
 
-        timesteps_use = self.random_timesteps(total_timesteps, self.n_timesteps, method='continuous')
+        if self.use_all_steps:
+            timesteps_use = np.arange(total_timesteps)
+        else:
+            timesteps_use = self.random_timesteps(total_timesteps, self.n_timesteps, method='continuous')
 
         subset_action = [data['previous_action'][i] for i in timesteps_use]
         subset_vector_obs = [data['vector_observation'][i] for i in timesteps_use]
