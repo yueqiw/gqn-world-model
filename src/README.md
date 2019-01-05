@@ -1,5 +1,3 @@
 
-### GQN training for face3d dataset 
+### GQN scene rendering for 3D Unity games
 
-1. Generate face3d dataset from [here](https://github.com/yueqiw/face3d/tree/master/data_generator)
-2. Train models
