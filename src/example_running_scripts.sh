@@ -53,3 +53,26 @@ python run_gqn_unity.py \
 --save_every 500 \
 --print_every 500
 
+
+python run_gqn_unity.py \
+--data_dir /home/yueqi/EVO/gqn_dataset/PushBlockCamera2/train \
+--model_name PushBlockCamera \
+--gqn_model GQNTimeSeriesLSTM \
+--output_dir /home/yueqi/Dropbox/data_large/gqn-pytorch/output \
+--n_timesteps 8 \
+--gradient_steps 20000 \
+--batch_size 36 \
+--save_every 1000 \
+--print_every 50
+
+
+python run_gqn_unity.py \
+--data_dir ~/gqn_dataset/PyramidsCamera3/train \
+--model_name PyramidsCamera \
+--gqn_model GQNTimeSeriesLSTM \
+--output_dir ../output \
+--n_timesteps 8 \
+--gradient_steps 20000 \
+--batch_size 36 \
+--save_every 1000 \
+--print_every 50
