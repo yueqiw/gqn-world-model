@@ -21,7 +21,7 @@ For game engine and training data, we use 3D Unity games from the the [Unity ML-
 This work leverages the [Generative query network (GQN)](https://deepmind.com/blog/neural-scene-representation-and-rendering/), which is a novel approach for learning robust representation conditional rendering of 3D environments without human labeling. 
 
 ### World Models 
-Our model is also inspired by the ideas from [World Models](https://worldmodels.github.io), which is a promising direction in model-based reinforcement learning that aim to learn a dynamic model of the agent's game environment.
+Our model is also inspired by the ideas from [World Models](https://worldmodels.github.io), which is a promising direction in model-based reinforcement learning that aims to learn a dynamic model of the agent's game environment.
 
 <p align="center"> 
 <img height="360" src="assets/model_flow_unity.png">
@@ -31,13 +31,20 @@ Our model is also inspired by the ideas from [World Models](https://worldmodels.
 The generative query network for action-conditional scene rendering
 </p>
 
-### Credits:
+### Credits
 
 @yueqiw @GilbertZhang @DorisHYC
 
-GQN code template: [generative-query-network-pytorch](<https://github.com/wohlert/generative-query-network-pytorch>)
+GQN code template: @wohlert [generative-query-network-pytorch](<https://github.com/wohlert/generative-query-network-pytorch>)
 
-This project started during the COMS4995 Deep Learning course at Columbia, advised by Prof. Iddo Drori. 
+This project started during the COMS4995 Deep Learning course at Columbia, advised by Prof. [Iddo Drori](https://www.cs.columbia.edu/~idrori/). 
 
+### References
 
 Juliani, A., Berges, V., Vckay, E., Gao, Y., Henry, H., Mattar, M., Lange, D. (2018). Unity: A General Platform for Intelligent Agents. arXiv preprint arXiv:1809.02627. https://github.com/Unity-Technologies/ml-agents.
+
+Eslami, S. M. A. et al. (2018) Neural scene representation and rendering. Science. or [preprint](https://deepmind.com/documents/211/Neural_Scene_Representation_and_Rendering_preprint.pdf)
+
+Ha, D. & Urgen Schmidhuber, J. (2018). World Models. https://arxiv.org/abs/1803.10122 
+
+
