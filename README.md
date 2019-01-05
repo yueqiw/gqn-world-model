@@ -45,6 +45,6 @@ Juliani, A., Berges, V., Vckay, E., Gao, Y., Henry, H., Mattar, M., Lange, D. (2
 
 Eslami, S. M. A. et al. (2018) Neural scene representation and rendering. Science. or [preprint](https://deepmind.com/documents/211/Neural_Scene_Representation_and_Rendering_preprint.pdf)
 
-Ha, D. & Urgen Schmidhuber, J. (2018). World Models. https://arxiv.org/abs/1803.10122 
+Ha, D. & Schmidhuber, J. (2018). World Models. https://arxiv.org/abs/1803.10122 
 
 
