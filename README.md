@@ -14,9 +14,14 @@ For AI to learn complex vision tasks in the 3D world, an effective representatio
 
 Humans (and other animals), on the other hand, use intrinsic predictive models of the 3D environment to navigate in the real world. Such models not only encode the current visual inputs but are also able to predict what future scenes would look like after performing different actions. Here, we develops **a predictive vision model for agents to effectively encode 3D game environments and render future scenes conditioned on current actions**. 
 
+### Unity ML-Agents Toolkit
 For game engine and training data, we use 3D Unity games from the the [Unity ML-Agents Toolkit](https://github.com/Unity-Technologies/ml-agents). Game builds and training data can be found [here](https://github.com/yueqiw/gqn-world-model/releases/). Example notebook for scene rendering can be found [here](notebooks/unity_predict_pyramids_video.ipynb). 
 
-This work leverages the [Generative query network (GQN)](https://deepmind.com/blog/neural-scene-representation-and-rendering/) and ideas from [World Models](https://worldmodels.github.io). GQN provides a novel approach for learning robust representation conditional rendering of 3D environments without human labeling. World Models, as the name suggests, is the idea to learn a dynamic model of the agent's game environment, and is a promising direction in model-based reinforcement learning. 
+### Generative query network (GQN)
+This work leverages the [Generative query network (GQN)](https://deepmind.com/blog/neural-scene-representation-and-rendering/), which is a novel approach for learning robust representation conditional rendering of 3D environments without human labeling. 
+
+### World Models 
+Our model is also inspired by the ideas from [World Models](https://worldmodels.github.io), which is a promising direction in model-based reinforcement learning that aim to learn a dynamic model of the agent's game environment.
 
 <p align="center"> 
 <img height="360" src="assets/model_flow_unity.png">
@@ -34,3 +39,5 @@ GQN code template: [generative-query-network-pytorch](<https://github.com/wohler
 
 This project started during the COMS4995 Deep Learning course at Columbia, advised by Prof. Iddo Drori. 
 
+
+Juliani, A., Berges, V., Vckay, E., Gao, Y., Henry, H., Mattar, M., Lange, D. (2018). Unity: A General Platform for Intelligent Agents. arXiv preprint arXiv:1809.02627. https://github.com/Unity-Technologies/ml-agents.
