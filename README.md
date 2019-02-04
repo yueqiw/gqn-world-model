@@ -1,4 +1,4 @@
-## Action-conditional Scene Rendering for RL agents in 3D Games
+## Action-conditional prediction of future scenes for agents in 3D games
 
 
 
